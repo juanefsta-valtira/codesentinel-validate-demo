@@ -3,8 +3,11 @@ import express, { Request, Response } from "express";
 const app = express();
 app.use(express.json());
 
-// VULN 1 (fix A-06 #1): hardcoded admin API key — CWE-798
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "validate-demo-leaked-key-12345";
+// Fixed A-06 #1: no hardcoded fallback
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
+if (!ADMIN_API_KEY) {
+  throw new Error("ADMIN_API_KEY environment variable is required");
+}
 
 type Item = { id: number; name: string; secretNote: string };
 
@@ -30,8 +33,8 @@ app.get("/items", (_req, res) => {
   res.json(items.map(({ secretNote: _, ...publicFields }) => publicFields));
 });
 
-// VULN 2 (fix A-06 #2): no auth — returns secretNote for every item — CWE-200
-app.get("/internal/items", (_req: Request, res: Response) => {
+// Fixed A-06 #2: admin key required for internal data
+app.get("/internal/items", requireAdminKey, (_req: Request, res: Response) => {
   res.json(items);
 });
 
